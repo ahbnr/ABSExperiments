@@ -1,0 +1,80 @@
+module FileTest;
+
+import * from ABS.Scheduler;
+
+def Maybe<T> safeHead<T>(List<T> l) =
+  case l {
+    Cons(x, _) => Just(x);
+    Nil => Nothing;
+  };
+
+def Maybe<Process> forceInit(schedulerFun)(List<Process> queue) =
+  case safeHead(filter((Process p) => method(p) == ".init")(queue)) {
+    Just(p) => Just(p);
+    Nothing => schedulerFun(queue);
+  };
+
+def List<Process> blacklistMethods(Set<String> blacklist, List<Process> queue) =
+  filter((Process p) => !contains(blacklist, method(p)))(queue);
+
+def List<Process> whitelistMethods(Set<String> whitelist, List<Process> queue) =
+  filter((Process p) => contains(whitelist, method(p)))(queue);
+
+def Maybe<Process> fileScheduler5(List<Process> queue, Int state) = 
+  forceInit(
+    (List<Process> queue) =>
+      if state == 0 then
+        safeHead(blacklistMethods(set["read", "close"], queue))
+      else
+        safeHead(blacklistMethods(set["open"], queue))
+  )(queue);
+
+interface FileI {
+    Unit open();
+  	Unit close();
+  	Unit read();
+}
+
+[Scheduler: fileScheduler5(queue, state)]
+class File implements FileI {
+  	Int state = 0;
+  
+    Unit open() {
+        state = 1;
+        println("Opened");
+    }
+  
+  	Unit read() {
+        println("Read");
+    }
+  
+  	Unit close() {
+        state = 0;
+        println("Closed");
+    }
+}
+
+interface UserI {
+    Unit main();
+}
+
+class User implements UserI {
+  Unit main() {
+    FileI f = new File();
+  
+    Fut<Unit> r = f!read();
+    Fut<Unit> c = f!close();
+    Fut<Unit> o = f!open();
+
+  	await o? & r? & c?;
+  }
+}
+
+{
+    println("Start\n");
+
+    UserI user = new User();
+    user.main();
+
+    println("\nStop");
+}
