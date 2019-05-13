@@ -1,0 +1,26 @@
+module TypeTest;
+
+import * from ABS.Scheduler;
+
+def Process scheduler1(List<Process> queue) = head(queue);
+
+def Maybe<Process> scheduler2(List<Process> queue) = Just(head(queue));
+
+[Scheduler: scheduler1(queue)]
+class C1 {
+  Unit run() {
+    println("C1 ran");
+  }
+}
+
+[Scheduler: scheduler2(queue)]
+class C2 {
+  Unit run() {
+    println("C2 ran");
+  }
+}
+
+{
+  new C1();
+  new C2();
+}
